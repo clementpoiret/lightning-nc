@@ -1,3 +1,9 @@
+"""Callbacks for PyTorch Lightning
+It integrates the compression algorithms from Intel(R) Neural Compressor
+into PyTorch Lightning framework. The compression algorithms are implemented
+as callbacks. Most of the code is located at https://github.com/intel/neural-compressor/.
+"""
+
 import logging
 from typing import Any, Optional
 
@@ -20,6 +26,22 @@ logger = logging.getLogger(__name__)
 
 
 class QATCallback(Callback):
+    """Quantization aware training callback for PyTorch Lightning
+
+    Attributes
+    ----------
+    config: QuantizationAwareTrainingConfig
+        Configuration for quantization aware training.
+    adaptor: PyTorchAdaptor
+        Adaptor of PyTorch framework, all PyTorch API is in this class.
+
+    Methods
+    -------
+    setup(trainer, pl_module, stage)
+        Setup the callback.
+    teardown(trainer, pl_module, stage)
+        Teardown the callback.
+    """
 
     def __init__(self,
                  config: QuantizationAwareTrainingConfig,
@@ -27,10 +49,26 @@ class QATCallback(Callback):
                  quant_format: str = "default",
                  options: Options = options,
                  dataloader: Optional[DataLoader] = None) -> None:
+        """
+        Parameters
+        ----------
+        config : QuantizationAwareTrainingConfig
+            Configuration for quantization aware training.
+        backend : str, optional
+            Backend of quantization aware training, by default "default"
+        quant_format : str, optional
+            Format of quantization in ONNXRuntime, by default "default"
+        options : Options, optional
+            Options for quantization aware training
+        dataloader : Optional[DataLoader], optional
+            Dataloader for accuracy calibration, by default None
+        """
         super().__init__()
         self.config = config
         self.dataloader = dataloader
 
+        # Taken from
+        # https://github.com/intel/neural-compressor/blob/d81269d2b261d39967605e17a89b5688ebaedbd1/neural_compressor/training.py#L130
         framework_specific_info = {
             "device": config.device,
             "random_seed": options.random_seed,
@@ -49,6 +87,9 @@ class QATCallback(Callback):
 
     def setup(self, trainer: Trainer, pl_module: LightningModule,
               stage: str) -> None:
+        """Setup the callback by converting the model.
+        Original hook defined here: https://github.com/intel/neural-compressor/blob/d81269d2b261d39967605e17a89b5688ebaedbd1/neural_compressor/compression/callbacks.py#L194
+        """
         if stage == "fit":
             if isinstance(pl_module.model, BaseModel):
                 self.adaptor.model = pl_module.model.model = Model(
@@ -61,15 +102,47 @@ class QATCallback(Callback):
 
     def teardown(self, trainer: Trainer, pl_module: LightningModule,
                  stage: str) -> None:
+        """Teardown the callback.
+        Original hook defined here: https://github.com/intel/neural-compressor/blob/d81269d2b261d39967605e17a89b5688ebaedbd1/neural_compressor/compression/callbacks.py#L195
+        """
         if stage == "fit":
             self.adaptor._post_hook_for_qat()
 
 
 class WeightPruningCallback(Callback):
+    """Weight pruning callback for PyTorch Lightning
+    It basically calls Intel(R) Neural Compressor's hooks
+    defined in their `BasePruning` class.
+    More details can be found at:
+    https://github.com/intel/neural-compressor/blob/d81269d2b261d39967605e17a89b5688ebaedbd1/neural_compressor/compression/pruner/pruning.py#L55
+
+    Attributes
+    ----------
+    config: WeightPruningConfig
+        Configuration for weight pruning.
+    dataloader: Optional[DataLoader]
+        Dataloader for accuracy calibration.
+
+    Methods
+    -------
+    setup(trainer, pl_module, stage)
+        Setup the callback.
+    on_train_start(trainer, pl_module)
+        Called when the train begins. Generate the pruners.
+    """
 
     def __init__(self,
                  config: WeightPruningConfig = None,
                  dataloader: Optional[DataLoader] = None) -> None:
+        """Initialize the callback.
+
+        Parameters
+        ----------
+        config : WeightPruningConfig, optional
+            Configuration for weight pruning, by default None
+        dataloader : Optional[DataLoader], optional
+            Dataloader for accuracy calibration, by default None
+        """
         super().__init__()
         self.config = config
         self.dataloader = dataloader
@@ -78,6 +151,15 @@ class WeightPruningCallback(Callback):
         self.pruners = []
 
     def _generate_pruners(self, model: Model) -> None:
+        """Generate the pruners.
+        Original function copied taken from:
+        https://github.com/intel/neural-compressor/blob/d81269d2b261d39967605e17a89b5688ebaedbd1/neural_compressor/compression/callbacks.py#L241
+
+        Parameters
+        ----------
+        model : Model
+            Model to be pruned.
+        """
         for info in self.pruners_info:
             if "mha" in info["pattern"]:
                 # head pruning
