@@ -34,6 +34,8 @@ To use the Lightning Neural Compressor, import the callbacks from the `lightning
 This is not a huge limitation as the refactoring is easy and straightforward, such as:
 
 ```python
+import os
+
 import lightning as L
 import timm
 import torch
@@ -52,13 +54,11 @@ class VeryComplexModel(nn.Module):
     
     def __init__(self):
         super().__init__()
-        self.backbone = timm.create_model("best_pretrained_model", pretrained=True)
+        self.backbone = timm.create_model("best_pretrained_model",
+                                          pretrained=True)
 
-        self.mlp = nn.Sequential([
-            nn.Linear(self.backbone.num_features, 128),
-            nn.ReLU(),
-            nn.Linear(128, 10)
-        ])
+        self.mlp = nn.Sequential(nn.Linear(self.backbone.num_features, 128),
+                                 nn.ReLU(), nn.Linear(128, 10))
 
     def forward(self, x):
         return self.mlp(self.backbone(x))
@@ -95,6 +95,8 @@ class Classifier(L.LightningModule):
         return [optimizer]
 
 
+clf = Classifier()
+
 # setup data
 dataset = MNIST(os.getcwd(), download=True, transform=ToTensor())
 train_loader = utils.data.DataLoader(dataset)
@@ -103,12 +105,10 @@ train_loader = utils.data.DataLoader(dataset)
 Now that everything is setup, the callbacks can be integrated into a PyTorch Lightning training routine:
 
 ```python
-clf = Classifier()
-
 # Define the configs for Pruning and Quantization
 q_config = QuantizationAwareTrainingConfig()
 p_config = WeightPruningConfig([{
-    "op_names": [".*"],
+    "op_names": ["backbone.*"],
     "start_step": 1,
     "end_step": 100,
     "target_sparsity": 0.5,
@@ -123,8 +123,8 @@ callbacks = [
     WeightPruningCallback(config=p_config),
 ]
 
-trainer = L.Trainer(accelerator='gpu',
-                    strategy='auto',
+trainer = L.Trainer(accelerator="gpu",
+                    strategy="auto",
                     limit_train_batches=100,
                     max_epochs=1,
                     callbacks=callbacks)
