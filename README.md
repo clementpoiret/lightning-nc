@@ -36,8 +36,10 @@ This is not a huge limitation as the refactoring is easy and straightforward, su
 ```python
 import lightning as L
 import timm
+import torch
 import torch.nn.functional as F
 from neural_compressor import QuantizationAwareTrainingConfig
+from neural_compressor.config import Torch2ONNXConfig
 from neural_compressor.training import WeightPruningConfig
 from lightning_nc import QATCallback, WeightPruningCallback
 from torch import Tensor, nn, optim, utils
