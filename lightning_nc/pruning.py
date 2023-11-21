@@ -138,13 +138,24 @@ class WeightPruningCallback(Callback):
                                  pl_module: LightningModule,
                                  optimizer: Optimizer) -> None:
         for pruner in self.pruners:
-            pruner.on_before_optimizer_step()
+            # WARNING: This has to be tested. I'm not sure if this is the
+            # correct way to do it. One this is for sure: if we call this
+            # before step == start_step, in cases where we have params that
+            # do not require grad, pruners based on gradients will fail to
+            # compute their scores.
+            if pruner.start_step <= trainer.global_step < pruner.end_step:
+                pruner.on_before_optimizer_step()
 
     def on_train_batch_end(self, trainer: Trainer, pl_module: LightningModule,
                            outputs: Any, batch: Any, batch_idx: int) -> None:
         # if batch_idx % trainer.accumulate_grad_batches == 0
         for pruner in self.pruners:
-            pruner.on_after_optimizer_step()
+            # WARNING: Same thing as above. Because on_after_optimizer_step
+            # keeps track of the global step, we can sync it with the trainer
+            # global step to avoid an incorrect step count caused by our fix.
+            if pruner.start_step <= trainer.global_step < pruner.end_step:
+                pruner.on_after_optimizer_step()
+            pruner.global_step = trainer.global_step
 
     def on_train_end(self, trainer: Trainer,
                      pl_module: LightningModule) -> None:
