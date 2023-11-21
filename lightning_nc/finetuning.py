@@ -55,10 +55,8 @@ class FinetuningCallback(Callback):
                     _max_epochs = self.max_epochs if info[
                         "end_epoch"] == -1 else info["end_epoch"]
                     if info["start_epoch"] <= trainer.current_epoch < _max_epochs:
-                        print(f"Finetuning {name}")
                         module.train()
                         module.apply(lambda x: x.requires_grad_())
                     else:
-                        print(f"Freezing {name}")
                         module.eval()
                         module.apply(lambda x: x.requires_grad_(False))
