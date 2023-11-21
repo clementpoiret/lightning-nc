@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "lightning-nc"
-version = "0.0.2"
+version = "0.0.3"
 description = ""
 authors = ["Clément POIRET <poiret.clement@outlook.fr>"]
 readme = "README.md"
