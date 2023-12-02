@@ -4,6 +4,8 @@
 
 This repository contains the implementation of the Lightning Neural Compressor. The main goal of this project is to provide Pytorch Lightning callbacks to use Intel® Neural Compressor. The callbacks aim at compressing a neural network so that it can be used on edge devices (i.e., mobile phones, raspberry pi, etc.). This project is a work in progress and is not ready for production use.
 
+This work is supported by Caminov (FRINGUANT).
+
 ## Current Status
 
 The project is currently under development, starting with Quantization Aware Training, as the default callback has been deleted from Pytorch Lightning.
